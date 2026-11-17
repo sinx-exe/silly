@@ -42,7 +42,7 @@
 
 		let hue = 0;
 		function rgbLoop() {
-			hue = (hue + 2) % 360;
+			hue = (hue + 8) % 360;
 			document.documentElement.style.setProperty('--rgb', `hsl(${hue} 100% 50%)`);
 			requestAnimationFrame(rgbLoop);
 		}
@@ -74,8 +74,8 @@
 		}
 
 		button.addEventListener('click', () => oscillator ? stopSiren() : startSiren());
-		// Browsers may block sound until the page receives a user gesture.
-		window.addEventListener('load', () => { try { startSiren(); } catch (_) {} });
+		// Start automatically; browsers may still require a user gesture for sound.
+		try { startSiren(); } catch (_) {}
 	</script>
 </body>
 </html>
