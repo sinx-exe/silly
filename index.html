@@ -19,15 +19,21 @@
 			transition: background-color .08s linear;
 		}
 		main { text-align: center; text-shadow: 0 2px 8px #000; }
+		button { margin-top: 1rem; padding: .75rem 1.25rem; font: inherit; cursor: pointer; }
+		#status { font-size: 1rem; }
 	</style>
 </head>
 <body>
 	<main>
 		<div>RGB SIREN</div>
+		<button id="sound" type="button">Start sound</button>
+		<p id="status" role="status">Click Start sound to enable audio.</p>
 	</main>
 	<script>
 		let audioContext, oscillator, gain, sirenTimer;
 		let sirenStarted = false;
+		const soundButton = document.querySelector('#sound');
+		const status = document.querySelector('#status');
 
 		let hue = 0;
 		function rgbLoop() {
@@ -39,7 +45,8 @@
 
 		async function startSiren() {
 			audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
-			if (audioContext.state === 'suspended') await audioContext.resume();
+			await audioContext.resume();
+			if (audioContext.state !== 'running') throw new Error('Audio did not start. Click Start sound to retry.');
 			if (sirenStarted) return;
 			oscillator = audioContext.createOscillator();
 			gain = audioContext.createGain();
@@ -56,11 +63,28 @@
 			}, 700);
 		}
 
-		// Attempt autoplay immediately; retry when the browser permits audio.
-		startSiren().catch(() => {});
-		['pointerdown', 'keydown', 'touchstart'].forEach(event =>
-			document.addEventListener(event, () => startSiren().catch(() => {}), { passive: true })
-		);
+		soundButton.addEventListener('click', async () => {
+			soundButton.disabled = true;
+			try {
+				if (sirenStarted) {
+					clearInterval(sirenTimer);
+					oscillator.stop();
+					oscillator.disconnect();
+					gain.disconnect();
+					sirenStarted = false;
+					soundButton.textContent = 'Start sound';
+					status.textContent = 'Sound stopped.';
+				} else {
+					await startSiren();
+					soundButton.textContent = 'Stop sound';
+					status.textContent = 'Siren playing.';
+				}
+			} catch (error) {
+				status.textContent = `Unable to play sound: ${error.message}`;
+			} finally {
+				soundButton.disabled = false;
+			}
+		});
 
 
 
