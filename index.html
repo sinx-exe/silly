@@ -37,12 +37,12 @@
 		}
 		rgbLoop();
 
-		function startSiren() {
-			if (sirenStarted) return;
+		async function startSiren() {
 			audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
-			audioContext.resume();
-			oscillator ||= audioContext.createOscillator();
-			gain ||= audioContext.createGain();
+			if (audioContext.state === 'suspended') await audioContext.resume();
+			if (sirenStarted) return;
+			oscillator = audioContext.createOscillator();
+			gain = audioContext.createGain();
 			oscillator.type = 'sawtooth';
 			oscillator.frequency.value = 650;
 			gain.gain.value = 0.18;
@@ -56,9 +56,11 @@
 			}, 700);
 		}
 
-		// Start automatically without adding any controls.
-		try { startSiren(); } catch (_) {}
-		document.addEventListener('pointerdown', startSiren, { once: true });
+		// Attempt autoplay immediately; retry when the browser permits audio.
+		startSiren().catch(() => {});
+		['pointerdown', 'keydown', 'touchstart'].forEach(event =>
+			document.addEventListener(event, () => startSiren().catch(() => {}), { passive: true })
+		);
 
 
 
