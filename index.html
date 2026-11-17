@@ -1,95 +1,97 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Discord</title>
-    <link rel="icon" type="image/png" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQcQ8tYaEeiDXpWmHP4wAe0PviqoJaCxijZP5msiCFKOg&s=10">
-	<style>
-		:root { --rgb: #ff0055; }
-		* { box-sizing: border-box; }
-		html, body { height: 100%; margin: 0; }
-		body {
-			display: grid;
-			place-items: center;
-			overflow: hidden;
-			color: white;
-			font: 700 clamp(1.2rem, 3vw, 2rem)/1.4 system-ui, sans-serif;
-			background: var(--rgb);
-			transition: background-color .08s linear;
-		}
-		main { text-align: center; text-shadow: 0 2px 8px #000; }
-		button { margin-top: 1rem; padding: .75rem 1.25rem; font: inherit; cursor: pointer; }
-		#status { font-size: 1rem; }
-	</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#313338">
+  <title>Discord</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Segoe UI", system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; min-height: 100%; margin: 0; }
+    body { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; background: #313338; color: #f2f3f5; user-select: none; -webkit-tap-highlight-color: transparent; }
+    main { padding: 32px; text-align: center; }
+    .logo { width: 88px; height: 68px; color: #5865f2; animation: float 2.4s ease-in-out infinite; }
+    h1 { margin: 16px 0 28px; font-size: 30px; font-weight: 800; letter-spacing: -1px; }
+    .dots { display: flex; justify-content: center; gap: 7px; height: 14px; }
+    .dots span { width: 7px; height: 7px; border-radius: 50%; background: #b5bac1; animation: pulse 1.2s ease-in-out infinite; }
+    .dots span:nth-child(2) { animation-delay: .15s; }
+    .dots span:nth-child(3) { animation-delay: .3s; }
+    #status { margin: 14px 0 0; font-size: 14px; color: #b5bac1; }
+    .hint { position: fixed; bottom: max(28px, env(safe-area-inset-bottom)); left: 20px; right: 20px; text-align: center; color: #949ba4; font-size: 12px; }
+    @keyframes float { 50% { transform: translateY(-6px); } }
+    @keyframes pulse { 0%, 80%, 100% { opacity: .3; transform: scale(.8); } 40% { opacity: 1; transform: scale(1); } }
+    @media (prefers-reduced-motion: reduce) { .logo, .dots span { animation: none; } }
+  </style>
 </head>
 <body>
-	<main>
-		<div>RGB SIREN</div>
-		<button id="sound" type="button">Start sound</button>
-		<p id="status" role="status">Click Start sound to enable audio.</p>
-	</main>
-	<script>
-		let audioContext, oscillator, gain, sirenTimer;
-		let sirenStarted = false;
-		const soundButton = document.querySelector('#sound');
-		const status = document.querySelector('#status');
+  <main aria-label="Discord loading">
+    <svg class="logo" viewBox="0 0 128 96" aria-hidden="true">
+      <path fill="currentColor" d="M105 10A105 105 0 0 0 80 2l-3 7a96 96 0 0 0-26 0l-3-7a105 105 0 0 0-25 8C7 34 2 57 4 79a105 105 0 0 0 32 16l7-11-10-5 2-2c19 9 39 9 58 0l2 2-10 5 7 11a105 105 0 0 0 32-16c3-26-5-49-19-69Z"/>
+      <ellipse cx="44" cy="53" rx="9" ry="12" fill="#313338"/>
+      <ellipse cx="84" cy="53" rx="9" ry="12" fill="#313338"/>
+    </svg>
+    <h1>Discord</h1>
+    <div class="dots" aria-hidden="true"><span></span><span></span><span></span></div>
+    <p id="status" role="status">Connecting...</p>
+  </main>
+  <p class="hint" id="hint">Tap anywhere to play the siren</p>
+  <script>
+    let audioContext, oscillator, gain, sirenTimer;
+    let starting = false;
+    let generation = 0;
+    const status = document.querySelector('#status');
+    const hint = document.querySelector('#hint');
 
-		let hue = 0;
-		function rgbLoop() {
-			hue = (hue + 8) % 360;
-			document.documentElement.style.setProperty('--rgb', `hsl(${hue} 100% 50%)`);
-			requestAnimationFrame(rgbLoop);
-		}
-		rgbLoop();
+    async function startSiren() {
+      if (starting) return;
+      starting = true;
+      const attempt = generation;
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) throw new Error('Audio is unavailable in this browser.');
+        if (!audioContext || audioContext.state === 'closed') audioContext = new AudioContext();
+        // Called directly from a tap, click, or keypress to unlock browser audio.
+        await audioContext.resume();
+        if (attempt !== generation) return;
+        if (audioContext.state !== 'running') throw new Error('Tap again to enable sound.');
+        if (oscillator) return;
+        oscillator = audioContext.createOscillator();
+        gain = audioContext.createGain();
+        oscillator.type = 'sawtooth';
+        oscillator.frequency.value = 650;
+        gain.gain.value = 0.18;
+        oscillator.connect(gain).connect(audioContext.destination);
+        oscillator.start();
+        let high = false;
+        sirenTimer = setInterval(() => {
+          high = !high;
+          oscillator.frequency.setTargetAtTime(high ? 1050 : 650, audioContext.currentTime, .08);
+        }, 700);
+        hint.textContent = 'Siren playing';
+      } catch (error) {
+        status.textContent = error.message;
+      } finally {
+        if (attempt === generation) starting = false;
+      }
+    }
 
-		async function startSiren() {
-			audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
-			await audioContext.resume();
-			if (audioContext.state !== 'running') throw new Error('Audio did not start. Click Start sound to retry.');
-			if (sirenStarted) return;
-			oscillator = audioContext.createOscillator();
-			gain = audioContext.createGain();
-			oscillator.type = 'sawtooth';
-			oscillator.frequency.value = 650;
-			gain.gain.value = 0.18;
-			oscillator.connect(gain).connect(audioContext.destination);
-			oscillator.start();
-			sirenStarted = true;
-			let high = false;
-			sirenTimer = setInterval(() => {
-				high = !high;
-				oscillator.frequency.setTargetAtTime(high ? 1050 : 650, audioContext.currentTime, .08);
-			}, 700);
-		}
+    function stopSiren() {
+      generation++;
+      starting = false;
+      clearInterval(sirenTimer);
+      if (oscillator) { oscillator.stop(); oscillator.disconnect(); oscillator = null; }
+      if (gain) { gain.disconnect(); gain = null; }
+      if (audioContext) { audioContext.close().catch(() => {}); audioContext = null; }
+      hint.textContent = 'Tap anywhere to play the siren';
+    }
 
-		soundButton.addEventListener('click', async () => {
-			soundButton.disabled = true;
-			try {
-				if (sirenStarted) {
-					clearInterval(sirenTimer);
-					oscillator.stop();
-					oscillator.disconnect();
-					gain.disconnect();
-					sirenStarted = false;
-					soundButton.textContent = 'Start sound';
-					status.textContent = 'Sound stopped.';
-				} else {
-					await startSiren();
-					soundButton.textContent = 'Stop sound';
-					status.textContent = 'Siren playing.';
-				}
-			} catch (error) {
-				status.textContent = `Unable to play sound: ${error.message}`;
-			} finally {
-				soundButton.disabled = false;
-			}
-		});
-
-
-
-        
-	</script>
+    document.addEventListener('pointerdown', startSiren, { passive: true });
+    document.addEventListener('click', startSiren);
+    document.addEventListener('keydown', event => {
+      if (!event.repeat) startSiren();
+    });
+    window.addEventListener('pagehide', stopSiren);
+  </script>
 </body>
 </html>
-
