@@ -19,26 +19,14 @@
 			transition: background-color .08s linear;
 		}
 		main { text-align: center; text-shadow: 0 2px 8px #000; }
-		button {
-			padding: .8rem 1.4rem;
-			border: 2px solid white;
-			border-radius: 999px;
-			color: white;
-			background: #0008;
-			font: inherit;
-			cursor: pointer;
-		}
-		button:hover { background: #000c; }
 	</style>
 </head>
 <body>
 	<main>
 		<div>RGB SIREN</div>
-		<button id="toggle" type="button">Start siren</button>
 	</main>
 	<script>
 		let audioContext, oscillator, gain, sirenTimer;
-		const button = document.getElementById('toggle');
 
 		let hue = 0;
 		function rgbLoop() {
@@ -63,19 +51,14 @@
 				high = !high;
 				oscillator.frequency.setTargetAtTime(high ? 1050 : 650, audioContext.currentTime, .08);
 			}, 700);
-			button.textContent = 'Stop siren';
 		}
 
-		function stopSiren() {
-			clearInterval(sirenTimer);
-			oscillator?.stop();
-			oscillator = null;
-			button.textContent = 'Start siren';
-		}
-
-		button.addEventListener('click', () => oscillator ? stopSiren() : startSiren());
 		// Start automatically; browsers may still require a user gesture for sound.
 		try { startSiren(); } catch (_) {}
+
+
+
+        
 	</script>
 </body>
 </html>
