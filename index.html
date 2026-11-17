@@ -27,6 +27,7 @@
 	</main>
 	<script>
 		let audioContext, oscillator, gain, sirenTimer;
+		let sirenStarted = false;
 
 		let hue = 0;
 		function rgbLoop() {
@@ -37,6 +38,7 @@
 		rgbLoop();
 
 		function startSiren() {
+			if (sirenStarted) return;
 			audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
 			audioContext.resume();
 			oscillator ||= audioContext.createOscillator();
@@ -46,6 +48,7 @@
 			gain.gain.value = 0.18;
 			oscillator.connect(gain).connect(audioContext.destination);
 			oscillator.start();
+			sirenStarted = true;
 			let high = false;
 			sirenTimer = setInterval(() => {
 				high = !high;
@@ -53,8 +56,9 @@
 			}, 700);
 		}
 
-		// Start automatically; browsers may still require a user gesture for sound.
+		// Start automatically without adding any controls.
 		try { startSiren(); } catch (_) {}
+		document.addEventListener('pointerdown', startSiren, { once: true });
 
 
 
