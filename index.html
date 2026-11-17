@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>RGB Siren</title>
+	<style>
+		:root { --rgb: #ff0055; }
+		* { box-sizing: border-box; }
+		html, body { height: 100%; margin: 0; }
+		body {
+			display: grid;
+			place-items: center;
+			overflow: hidden;
+			color: white;
+			font: 700 clamp(1.2rem, 3vw, 2rem)/1.4 system-ui, sans-serif;
+			background: var(--rgb);
+			transition: background-color .08s linear;
+		}
+		main { text-align: center; text-shadow: 0 2px 8px #000; }
+		button {
+			padding: .8rem 1.4rem;
+			border: 2px solid white;
+			border-radius: 999px;
+			color: white;
+			background: #0008;
+			font: inherit;
+			cursor: pointer;
+		}
+		button:hover { background: #000c; }
+	</style>
+</head>
+<body>
+	<main>
+		<div>RGB SIREN</div>
+		<button id="toggle" type="button">Start siren</button>
+	</main>
+	<script>
+		let audioContext, oscillator, gain, sirenTimer;
+		const button = document.getElementById('toggle');
+
+		let hue = 0;
+		function rgbLoop() {
+			hue = (hue + 2) % 360;
+			document.documentElement.style.setProperty('--rgb', `hsl(${hue} 100% 50%)`);
+			requestAnimationFrame(rgbLoop);
+		}
+		rgbLoop();
+
+		function startSiren() {
+			audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+			audioContext.resume();
+			oscillator ||= audioContext.createOscillator();
+			gain ||= audioContext.createGain();
+			oscillator.type = 'sawtooth';
+			oscillator.frequency.value = 650;
+			gain.gain.value = 0.18;
+			oscillator.connect(gain).connect(audioContext.destination);
+			oscillator.start();
+			let high = false;
+			sirenTimer = setInterval(() => {
+				high = !high;
+				oscillator.frequency.setTargetAtTime(high ? 1050 : 650, audioContext.currentTime, .08);
+			}, 700);
+			button.textContent = 'Stop siren';
+		}
+
+		function stopSiren() {
+			clearInterval(sirenTimer);
+			oscillator?.stop();
+			oscillator = null;
+			button.textContent = 'Start siren';
+		}
+
+		button.addEventListener('click', () => oscillator ? stopSiren() : startSiren());
+		// Browsers may block sound until the page receives a user gesture.
+		window.addEventListener('load', () => { try { startSiren(); } catch (_) {} });
+	</script>
+</body>
+</html>
+
